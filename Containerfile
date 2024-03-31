@@ -33,7 +33,7 @@ RUN rpm-ostree install \
     ripgrep \
     strace \
     subscription-manager \
-    syncthing
+    syncthing \
     virt-install \
     virt-manager \
     virt-viewer \
