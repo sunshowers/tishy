@@ -1,10 +1,10 @@
-FROM ghcr.io/ublue-os/bazzite:latest AS sefirot-base
+FROM ghcr.io/ublue-os/bazzite-nvidia:latest AS sefirot-base
 
 ARG IMAGE_NAME="${IMAGE_NAME:-sefirot}"
 ARG IMAGE_VENDOR="${IMAGE_VENDOR:-butterflysky}"
 ARG IMAGE_FLAVOR="${IMAGE_FLAVOR:-nvidia}"
 ARG IMAGE_BRANCH="${IMAGE_BRANCH:-main}"
-ARG BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-bazzite}"
+ARG BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-bazzite-nvidia}"
 ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-39}"
 
 ## Copy system files over
