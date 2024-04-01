@@ -139,7 +139,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GCR_TOKEN }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       # Push the image to GHCR (Image Registry)
       - name: Push To GHCR
@@ -169,3 +169,4 @@ jobs:
           TAGS: ${{ steps.push.outputs.digest }}
           COSIGN_EXPERIMENTAL: false
           COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
