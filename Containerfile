@@ -1,11 +1,11 @@
 FROM ghcr.io/ublue-os/bazzite-nvidia:latest AS sefirot-base
 
-ARG IMAGE_NAME="${IMAGE_NAME:-sefirot}"
+ARG IMAGE_NAME="${MY_IMAGE_NAME:-sefirot-nvidia}"
 ARG IMAGE_VENDOR="${IMAGE_VENDOR:-butterflysky}"
 ARG IMAGE_FLAVOR="${IMAGE_FLAVOR:-nvidia}"
 ARG IMAGE_BRANCH="${IMAGE_BRANCH:-main}"
-ARG BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-bazzite-nvidia}"
-ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-39}"
+ARG BASE_IMAGE_NAME="${SOURCE_IMAGE:-bazzite-nvidia}"
+ARG FEDORA_MAJOR_VERSION="${FEDORA_VERSION:-39}"
 
 ## Copy system files over
 COPY system_files /
@@ -15,6 +15,8 @@ COPY system_files /
 RUN sed -i 's@enabled=0@enabled=1@g' /etc/yum.repos.d/_copr_kylegospo-bazzite.repo
 
 RUN rpm-ostree install \
+    bat \
+    cfonts \
     cockpit-bridge \
     cockpit-kdump \
     cockpit-machines \
@@ -32,7 +34,6 @@ RUN rpm-ostree install \
     powertop \
     ripgrep \
     strace \
-    subscription-manager \
     syncthing \
     virt-install \
     virt-manager \
@@ -64,7 +65,7 @@ RUN /tmp/install-chrome.sh
 ## Commit
 RUN rm -rf /var/* && ostree container commit
 
-FROM sefirot-chrome AS sefirot
+FROM sefirot-chrome AS sefirot-nvidia
 
 ## Configure KDE & GNOME
 #RUN sed -i '/<entry name="launchers" type="StringList">/,/<\/entry>/ s/<default>[^<]*<\/default>/<default>applications:org.gnome.Prompt.desktop,preferred:\/\/browser,preferred:\/\/filemanager,applications:code.desktop,applications:steam.desktop<\/default>/' /usr/share/plasma/plasmoids/org.kde.plasma.taskmanager/contents/config/main.xml && \

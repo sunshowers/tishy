@@ -18,10 +18,11 @@ on:
 # The values here are defaults and should be modified if using a different image, needing
 # nvidia, a specific nvidia driver, or a different Fedora version.
 env:
-  MY_IMAGE_NAME: "sefirot" # the name of the image produced by this build
-  ARG_SOURCE_IMAGE: "bazzite" # see Containerfile for list of possible upstream images
+  MY_IMAGE_NAME: "sefirot-nvidia" # the name of the image produced by this build
+  ARG_SOURCE_IMAGE: "bazzite-nvidia" # see Containerfile for list of possible upstream images
   ARG_FEDORA_VERSION: "39" # see Containerfile
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}" # do not edit
+  ARG_IMAGE_VENDOR: "${{ github.repository_owner }}"
 
 jobs:
   push-ghcr:
@@ -107,6 +108,7 @@ jobs:
             org.opencontainers.image.description=Customized ${{ env.ARG_SOURCE_IMAGE }}
             org.opencontainers.image.title=${{ env.MY_IMAGE_NAME }}
             org.opencontainers.image.version=${{ steps.labels.outputs.VERSION }}
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
 
       # Build image using Buildah action
       - name: Build Image
@@ -119,8 +121,10 @@ jobs:
           tags: |
             ${{ steps.generate-tags.outputs.alias_tags }}
           build-args: |
-            SOURCE_IMAGE=${{ env.ARG_SOURCE_IMAGE }}
             FEDORA_VERSION=${{ env.ARG_FEDORA_VERSION }}
+            IMAGE_VENDOR=${{ env.IMAGE_VENDOR }}
+            MY_IMAGE_NAME=${{ env.MY_IMAGE_NAME }}
+            SOURCE_IMAGE=${{ env.ARG_SOURCE_IMAGE }}
           labels: ${{ steps.meta.outputs.labels }}
           # cache intermediate layers to speed up builds
           layers: true
