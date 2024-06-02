@@ -13,7 +13,10 @@ COPY system_files /
 
 ## Add infrequently-updated packages
 
-RUN sed -i 's@enabled=0@enabled=1@g' /etc/yum.repos.d/_copr_kylegospo-bazzite.repo
+RUN \
+  sed -i -e 's@enabled=0@enabled=1@g' \
+    /etc/yum.repos.d/_copr_kylegospo-bazzite.repo \
+    /etc/yum.repos.d/_copr_che-nerd-fonts.repo
 
 RUN rpm-ostree install \
     bat \
@@ -32,6 +35,7 @@ RUN rpm-ostree install \
     fd-find \
     firefox \
     libguestfs-tools \
+    nerd-fonts \
     perf \
     powertop \
     ripgrep \
