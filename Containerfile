@@ -30,6 +30,7 @@ RUN rpm-ostree install \
     direnv \
     evtest \
     fd-find \
+    firefox \
     libguestfs-tools \
     perf \
     powertop \
