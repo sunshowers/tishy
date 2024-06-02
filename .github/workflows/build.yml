@@ -20,7 +20,7 @@ on:
 env:
   MY_IMAGE_NAME: "sefirot-nvidia" # the name of the image produced by this build
   ARG_SOURCE_IMAGE: "bazzite-nvidia" # see Containerfile for list of possible upstream images
-  ARG_FEDORA_VERSION: "39" # see Containerfile
+  ARG_FEDORA_VERSION: "40" # see Containerfile
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}" # do not edit
   ARG_IMAGE_VENDOR: "${{ github.repository_owner }}"
 
