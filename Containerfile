@@ -1,3 +1,4 @@
+ARG FEDORA_MAJOR_VERSION="${FEDORA_VERSION:-40}"
 FROM ghcr.io/ublue-os/bazzite-nvidia:latest AS sefirot-base
 
 ARG IMAGE_NAME="${MY_IMAGE_NAME:-sefirot-nvidia}"
@@ -5,7 +6,7 @@ ARG IMAGE_VENDOR="${IMAGE_VENDOR:-butterflysky}"
 ARG IMAGE_FLAVOR="${IMAGE_FLAVOR:-nvidia}"
 ARG IMAGE_BRANCH="${IMAGE_BRANCH:-main}"
 ARG BASE_IMAGE_NAME="${SOURCE_IMAGE:-bazzite-nvidia}"
-ARG FEDORA_MAJOR_VERSION="${FEDORA_VERSION:-39}"
+ARG FEDORA_MAJOR_VERSION
 
 ## Copy system files over
 COPY system_files /
@@ -38,7 +39,8 @@ RUN rpm-ostree install \
     virt-install \
     virt-manager \
     virt-viewer \
-    zsh
+    zsh \
+    zsh-syntax-highlighting
 
 ## Add flatpak packages
 RUN cat /tmp/flatpak_install >> /usr/share/ublue-os/bazzite/flatpak/install
@@ -57,6 +59,7 @@ RUN rm -rf /var/* && ostree container commit
 
 ## Next: install system Chrome
 FROM sefirot-1password AS sefirot-chrome
+ARG FEDORA_MAJOR_VERSION
 
 ## Add system Chrome
 COPY system_files /
@@ -66,6 +69,7 @@ RUN /tmp/install-chrome.sh
 RUN rm -rf /var/* && ostree container commit
 
 FROM sefirot-chrome AS sefirot-nvidia
+ARG FEDORA_MAJOR_VERSION
 
 ## Configure KDE & GNOME
 #RUN sed -i '/<entry name="launchers" type="StringList">/,/<\/entry>/ s/<default>[^<]*<\/default>/<default>applications:org.gnome.Prompt.desktop,preferred:\/\/browser,preferred:\/\/filemanager,applications:code.desktop,applications:steam.desktop<\/default>/' /usr/share/plasma/plasmoids/org.kde.plasma.taskmanager/contents/config/main.xml && \
