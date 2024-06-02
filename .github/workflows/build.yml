@@ -87,13 +87,13 @@ jobs:
               echo "${TAG}"
           done
 
-          echo "alias_tags=${alias_tags[*]}" >> $GITHUB_OUTPUT
+          echo "alias_tags=${alias_tags[*]}" | tee -a $GITHUB_OUTPUT
 
       - name: Get current version
         id: labels
         run: |
-          ver=$(skopeo inspect docker://ghcr.io/ublue-os/${{ env.ARG_SOURCE_IMAGE }}}:${{ env.ARG_FEDORA_VERSION }}${{ env.ARG_NVIDIA_VERSION }} | jq -r '.Labels["org.opencontainers.image.version"]')
-          echo "VERSION=$ver" >> $GITHUB_OUTPUT
+          ver=$(skopeo inspect docker://ghcr.io/ublue-os/${{ env.ARG_SOURCE_IMAGE }}:${{ env.ARG_FEDORA_VERSION }}${{ env.ARG_NVIDIA_VERSION }} | jq -r '.Labels["org.opencontainers.image.version"]')
+          echo "VERSION=$ver" | tee -a $GITHUB_OUTPUT
 
       # Build metadata
       - name: Image Metadata
