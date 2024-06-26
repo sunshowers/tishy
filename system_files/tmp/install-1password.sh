@@ -97,6 +97,12 @@ chmod g+s "${BROWSER_SUPPORT_PATH}"
 chgrp "${GID_ONEPASSWORDCLI}" /usr/bin/op
 chmod g+s /usr/bin/op
 
+# (butterfly: Firefox browser plugin couldn't talk to native app due to gid mismatch)
+# Remove any groups automatically created by installing the package
+# so the dynamic entries work automatically
+/usr/sbin/groupdel -f onepassword >/dev/null 2>&1 || true
+/usr/sbin/groupdel -f onepassword-cli >/dev/null 2>&1 || true
+
 # Dynamically create the required groups via sysusers.d
 # and set the GID based on the files we just chgrp'd
 cat >/usr/lib/sysusers.d/onepassword.conf <<EOF
