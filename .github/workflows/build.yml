@@ -19,15 +19,15 @@ on:
 # nvidia, a specific nvidia driver, or a different Fedora version.
 env:
   MY_IMAGE_NAME: "sefirot-nvidia" # the name of the image produced by this build
-  ARG_SOURCE_IMAGE: "bazzite-nvidia" # see Containerfile for list of possible upstream images
-  ARG_FEDORA_VERSION: "40" # see Containerfile
+  ARG_SOURCE_IMAGE: "bazzite-nvidia-open" # see Containerfile for list of possible upstream images
+  ARG_FEDORA_VERSION: "41" # see Containerfile
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}" # do not edit
   ARG_IMAGE_VENDOR: "${{ github.repository_owner }}"
 
 jobs:
   push-ghcr:
     name: Build and push image
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     permissions:
       contents: read
