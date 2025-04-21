@@ -1,4 +1,4 @@
-ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-41}"
+ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-42}"
 
 FROM ghcr.io/ublue-os/bazzite:latest AS tishy-base
 
@@ -61,4 +61,5 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
     sed -i '/<entry name="favorites" type="StringList">/,/<\/entry>/ s/<default>[^<]*<\/default>/<default>org.gnome.Prompt.desktop,preferred:\/\/browser,org.kde.dolphin.desktop,code.desktop,steam.desktop<\/default>/' /usr/share/plasma/plasmoids/org.kde.plasma.kickoff/contents/config/main.xml && \
     KERNEL_FLAVOR=bazzite /tmp/build-initramfs && \
     /tmp/cleanup.sh && \
+    install -d -m 0755 /nix && \
     ostree container commit
