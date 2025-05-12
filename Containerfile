@@ -1,6 +1,6 @@
-ARG FEDORA_MAJOR_VERSION="${FEDORA_VERSION:-41}"
+ARG FEDORA_MAJOR_VERSION="${FEDORA_VERSION:-42}"
 
-FROM ghcr.io/ublue-os/bazzite-nvidia-open:latest AS sefirot-base
+FROM ghcr.io/ublue-os/bazzite-nvidia-open:stable-${FEDORA_MAJOR_VERSION} AS sefirot-base
 
 ARG IMAGE_NAME="${MY_IMAGE_NAME:-sefirot-nvidia}"
 ARG IMAGE_VENDOR="${IMAGE_VENDOR:-butterflysky}"
@@ -16,36 +16,36 @@ COPY system_files /
 
 RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
     sed -i -e 's@enabled=0@enabled=1@g' \
-      /etc/yum.repos.d/_copr_kylegospo-bazzite.repo \
-      /etc/yum.repos.d/_copr_che-nerd-fonts.repo && \
+    /etc/yum.repos.d/_copr_kylegospo-bazzite.repo \
+    /etc/yum.repos.d/_copr_che-nerd-fonts.repo && \
     rpm-ostree install \
-      bat \
-      cfonts \
-      cockpit-bridge \
-      cockpit-kdump \
-      cockpit-machines \
-      cockpit-navigator \
-      cockpit-networkmanager \
-      cockpit-podman \
-      cockpit-selinux \
-      cockpit-storaged \
-      cockpit-system \
-      direnv \
-      evtest \
-      fd-find \
-      firefox \
-      libguestfs-tools \
-      nerd-fonts \
-      perf \
-      powertop \
-      ripgrep \
-      strace \
-      syncthing \
-      virt-install \
-      virt-manager \
-      virt-viewer \
-      zsh \
-      zsh-syntax-highlighting && \
+    bat \
+    cfonts \
+    cockpit-bridge \
+    cockpit-kdump \
+    cockpit-machines \
+    cockpit-navigator \
+    cockpit-networkmanager \
+    cockpit-podman \
+    cockpit-selinux \
+    cockpit-storaged \
+    cockpit-system \
+    direnv \
+    evtest \
+    fd-find \
+    firefox \
+    libguestfs-tools \
+    nerd-fonts \
+    perf \
+    powertop \
+    ripgrep \
+    strace \
+    syncthing \
+    virt-install \
+    virt-manager \
+    virt-viewer \
+    zsh \
+    zsh-syntax-highlighting && \
     cat /tmp/flatpak_install >> /usr/share/ublue-os/bazzite/flatpak/install && \
     /tmp/cleanup.sh && \
     ostree container commit
@@ -68,5 +68,3 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
     /tmp/install-chrome.sh && \
     /tmp/cleanup.sh && \
     ostree container commit
-
-
