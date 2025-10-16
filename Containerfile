@@ -18,6 +18,7 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
     --mount=type=cache,dst=/var/cache/libdnf5 \
     dnf5 -y copr enable -y kylegospo/bazzite && \
     rpm-ostree install \
+        bpftrace \
         chromium \
         code \
         corectrl \
