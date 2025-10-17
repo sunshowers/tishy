@@ -26,7 +26,6 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
         evtest \
         fd-find \
         firefox \
-        kontact \
         libguestfs-tools \
         NetworkManager-tui \
         perf \
