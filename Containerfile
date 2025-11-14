@@ -1,4 +1,4 @@
-ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-42}"
+ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-43}"
 
 FROM ghcr.io/ublue-os/bazzite:latest AS tishy-base
 
@@ -16,8 +16,9 @@ COPY system_files /
 
 RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
     --mount=type=cache,dst=/var/cache/libdnf5 \
-    dnf5 -y copr enable -y kylegospo/bazzite && \
-    rpm-ostree install \
+    dnf5 -y copr enable -y bazzite-org/bazzite && \
+    dnf5 -y swap '*openh264*' noopenh264 && \
+    dnf5 -y install \
         bpftrace \
         code \
         corectrl \
@@ -51,7 +52,7 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
     --mount=type=cache,dst=/var/cache/libdnf5 \
     /tmp/install-brave.sh && \
     curl -Lo /etc/yum.repos.d/_copr_wezfurlong-wezterm-nightly.repo https://copr.fedorainfracloud.org/coprs/wezfurlong/wezterm-nightly/repo/fedora-"${FEDORA_MAJOR_VERSION}"/wezfurlong-wezterm-nightly-"${FEDORA_MAJOR_VERSION}".repo && \
-    rpm-ostree install \
+    dnf5 -y install \
         brave-browser \
         NetworkManager-tui \
         virt-install \
@@ -59,7 +60,6 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
         virt-viewer \
         wezterm && \
     sed -i '/<entry name="launchers" type="StringList">/,/<\/entry>/ s/<default>[^<]*<\/default>/<default>applications:org.gnome.Prompt.desktop,preferred:\/\/browser,preferred:\/\/filemanager,applications:code.desktop,applications:steam.desktop<\/default>/' /usr/share/plasma/plasmoids/org.kde.plasma.taskmanager/contents/config/main.xml && \
-    sed -i '/<entry name="favorites" type="StringList">/,/<\/entry>/ s/<default>[^<]*<\/default>/<default>org.gnome.Prompt.desktop,preferred:\/\/browser,org.kde.dolphin.desktop,code.desktop,steam.desktop<\/default>/' /usr/share/plasma/plasmoids/org.kde.plasma.kickoff/contents/config/main.xml && \
     KERNEL_FLAVOR=bazzite /tmp/build-initramfs && \
     /tmp/cleanup.sh && \
     install -d -m 0755 /nix && \

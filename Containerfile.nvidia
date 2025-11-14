@@ -1,4 +1,4 @@
-ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-42}"
+ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-43}"
 
 FROM ghcr.io/ublue-os/bazzite-nvidia-open:latest AS tishy-nvidia-base
 

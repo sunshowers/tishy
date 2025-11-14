@@ -16,7 +16,7 @@ on:
 
 env:
   ARG_SOURCE_IMAGE: "bazzite" # see Containerfile for list of possible upstream images
-  ARG_FEDORA_VERSION: "41" # see Containerfile
+  ARG_FEDORA_VERSION: "43" # see Containerfile
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}" # do not edit
 
 jobs:
