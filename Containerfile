@@ -27,7 +27,6 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
         fd-find \
         firefox \
         libguestfs-tools \
-        NetworkManager-tui \
         perf \
         powertop \
         ripgrep \
