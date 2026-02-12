@@ -51,8 +51,10 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
     --mount=type=cache,dst=/var/cache/libdnf5 \
     /tmp/install-brave.sh && \
     curl -Lo /etc/yum.repos.d/_copr_wezfurlong-wezterm-nightly.repo https://copr.fedorainfracloud.org/coprs/wezfurlong/wezterm-nightly/repo/fedora-"${FEDORA_MAJOR_VERSION}"/wezfurlong-wezterm-nightly-"${FEDORA_MAJOR_VERSION}".repo && \
+    curl -fsSLo "/etc/yum.repos.d/_copr:copr.fedorainfracloud.org:scottames:ghostty.repo" https://copr.fedorainfracloud.org/coprs/scottames/ghostty/repo/fedora-"${FEDORA_MAJOR_VERSION}"/scottames-ghostty-fedora-"${FEDORA_MAJOR_VERSION}".repo && \
     dnf5 -y install \
         brave-browser \
+        ghostty \
         virt-install \
         virt-manager \
         virt-viewer \
