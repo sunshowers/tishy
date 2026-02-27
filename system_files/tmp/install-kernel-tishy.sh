@@ -19,6 +19,11 @@ printf '%s\n' '#!/bin/sh' 'exit 0' > 50-dracut.install
 chmod +x 05-rpmostree.install 50-dracut.install
 popd
 
+# Clear existing kernel versionlock from the base image. Without this,
+# dnf5 refuses to install our kernel because the base image locked the
+# stock kernel version.
+dnf5 versionlock clear
+
 # Remove the stock kernel packages.
 dnf5 -y remove --no-autoremove \
     kernel \
