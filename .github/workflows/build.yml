@@ -180,6 +180,147 @@ jobs:
           COSIGN_EXPERIMENTAL: false
           COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
 
+  push-ghcr-deck:
+    name: Build and push deck image
+    runs-on: ubuntu-24.04
+    env:
+      MY_IMAGE_NAME: "tishy-deck"
+
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout Push to Registry action
+        uses: actions/checkout@v4
+
+      - run: df -h
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          sudo docker builder prune -a
+      - run: df -h
+
+      - name: Check just syntax
+        uses: ublue-os/just-action@v1
+
+      - name: Generate tags
+        id: generate-tags
+        shell: bash
+        run: |
+          TIMESTAMP="$(date +%Y%m%d)"
+          VARIANT="${{ env.ARG_FEDORA_VERSION }}"
+
+          COMMIT_TAGS=()
+          BUILD_TAGS=()
+
+          SHA_SHORT="${GITHUB_SHA::7}"
+          COMMIT_TAGS+=("pr-${{ github.event.number }}-${VARIANT}")
+          COMMIT_TAGS+=("${SHA_SHORT}-${VARIANT}")
+          COMMIT_TAGS+=("pr-${{ github.event.number }}")
+          COMMIT_TAGS+=("${SHA_SHORT}")
+
+          BUILD_TAGS=("${VARIANT}")
+
+          for TAG in "${BUILD_TAGS[@]}"; do
+              BUILD_TAGS+=("${TAG}-${TIMESTAMP}")
+          done
+
+          BUILD_TAGS+=("${TIMESTAMP}")
+          BUILD_TAGS+=("latest")
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+              echo "Generated the following commit tags: "
+              for TAG in "${COMMIT_TAGS[@]}"; do
+                  echo "${TAG}"
+              done
+              alias_tags=("${COMMIT_TAGS[@]}")
+          else
+              alias_tags=("${BUILD_TAGS[@]}")
+          fi
+
+          echo "Generated the following build tags: "
+          for TAG in "${BUILD_TAGS[@]}"; do
+              echo "${TAG}"
+          done
+
+          echo "alias_tags=${alias_tags[*]}" >> $GITHUB_OUTPUT
+
+      - name: Get current version
+        id: labels
+        run: |
+          ver=$(skopeo inspect docker://ghcr.io/ublue-os/bazzite-deck:${{ env.ARG_FEDORA_VERSION }} | jq -r '.Labels["org.opencontainers.image.version"]')
+          echo "VERSION=$ver" >> $GITHUB_OUTPUT
+
+      - name: Image Metadata
+        uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: |
+            ${{ env.MY_IMAGE_NAME }}
+          labels: |
+            io.artifacthub.package.readme-url=https://raw.githubusercontent.com/${{ github.repository }}/main/README.md
+            org.opencontainers.image.description=bazzite-deck with HDMI FRL kernel
+            org.opencontainers.image.title=${{ env.MY_IMAGE_NAME }}
+            org.opencontainers.image.version=${{ steps.labels.outputs.VERSION }}
+
+      - name: Build Image
+        id: build_image
+        uses: redhat-actions/buildah-build@v2
+        with:
+          containerfiles: |
+            ./Containerfile.deck
+          image: ${{ env.MY_IMAGE_NAME }}
+          tags: |
+            ${{ steps.generate-tags.outputs.alias_tags }}
+          build-args: |
+            FEDORA_MAJOR_VERSION=${{ env.ARG_FEDORA_VERSION }}
+          labels: ${{ steps.meta.outputs.labels }}
+          layers: true
+          oci: false
+
+      - name: Lowercase Registry
+        id: registry_case
+        uses: ASzc/change-string-case-action@v6
+        with:
+          string: ${{ env.IMAGE_REGISTRY }}
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push To GHCR
+        uses: redhat-actions/push-to-registry@v2
+        id: push
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ github.token }}
+        with:
+          image: ${{ steps.build_image.outputs.image }}
+          tags: ${{ steps.build_image.outputs.tags }}
+          registry: ${{ steps.registry_case.outputs.lowercase }}
+          username: ${{ env.REGISTRY_USER }}
+          password: ${{ env.REGISTRY_PASSWORD }}
+          extra-args: |
+            --disable-content-trust
+
+      - uses: sigstore/cosign-installer@v3.4.0
+        if: github.event_name != 'pull_request'
+
+      - name: Sign container image
+        if: github.event_name != 'pull_request'
+        run: |
+          cosign sign -y --key env://COSIGN_PRIVATE_KEY ${{ steps.registry_case.outputs.lowercase }}/${{ steps.build_image.outputs.image }}@${TAGS}
+        env:
+          TAGS: ${{ steps.push.outputs.digest }}
+          COSIGN_EXPERIMENTAL: false
+          COSIGN_PRIVATE_KEY: ${{ secrets.SIGNING_SECRET }}
+
   push-ghcr-nvidia:
     name: Build and push Nvidia image
     runs-on: ubuntu-24.04
