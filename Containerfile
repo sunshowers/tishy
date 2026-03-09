@@ -59,7 +59,6 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
         virt-manager \
         virt-viewer \
         wezterm && \
-    sed -i '/<entry name="launchers" type="StringList">/,/<\/entry>/ s/<default>[^<]*<\/default>/<default>applications:org.gnome.Prompt.desktop,preferred:\/\/browser,preferred:\/\/filemanager,applications:code.desktop,applications:steam.desktop<\/default>/' /usr/share/plasma/plasmoids/org.kde.plasma.taskmanager/contents/config/main.xml && \
     KERNEL_FLAVOR=bazzite /tmp/build-initramfs && \
     /tmp/cleanup.sh && \
     install -d -m 0755 /nix && \
