@@ -28,6 +28,7 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
         firefox \
         libguestfs-tools \
         perf \
+        podman-compose \
         powertop \
         ripgrep \
         strace \
