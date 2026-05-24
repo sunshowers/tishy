@@ -56,12 +56,14 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
     dnf5 -y install \
         brave-browser \
         ghostty \
+        guestfs-tools \
         libvirt-daemon-kvm \
         virt-install \
         virt-manager \
         virt-viewer \
         virtiofsd \
         wezterm && \
+    /tmp/install-niri-dms.sh && \
     KERNEL_FLAVOR=bazzite /tmp/build-initramfs && \
     /tmp/cleanup.sh && \
     install -d -m 0755 /nix && \
