@@ -26,9 +26,12 @@ for repo in "${copr_repos[@]}"; do
 done
 
 # Package set drawn from spacium's build, minus the display-manager swap
-# (greetd, dms-greeter) and ghostty, which tishy already installs.
+# (greetd, dms-greeter) and ghostty, which tishy already installs. adw-gtk3 is
+# the base GTK3 theme that DMS's matugen GTK theming layers onto (it sets
+# gtk-theme to adw-gtk3-dark); without it GTK3 apps fall back to light Adwaita.
 dnf5 -y install \
     acl \
+    adw-gtk3 \
     bluetui \
     breakpad \
     cava \
@@ -71,6 +74,13 @@ bridge_autostart="/etc/xdg/autostart/org.kde.xwaylandvideobridge.desktop"
 if [[ -f "$bridge_autostart" ]] && ! grep -q '^NotShowIn=' "$bridge_autostart"; then
     printf 'NotShowIn=niri;\n' >> "$bridge_autostart"
 fi
+
+# DankCalendar ships a user service that runs the dcal tray daemon
+# (`dcal run --session --hidden`). Enable it globally so the calendar is
+# available in the tray on login. It binds to graphical-session.target, so it
+# runs under both DMS/niri and KDE; accounts are configured later from dcal's
+# own UI.
+systemctl --global enable dcal.service
 
 # /etc/skel only seeds *new* home directories, so enable a user service that
 # copies the niri config into existing accounts on first graphical login. It is

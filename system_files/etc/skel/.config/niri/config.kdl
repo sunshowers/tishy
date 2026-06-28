@@ -33,6 +33,14 @@ input {
             // If this section is empty, niri will fetch xkb settings
             // from org.freedesktop.locale1. You can control these using
             // localectl set-x11-keymap.
+
+            // The default us/pc105 keymap leaves the F13-F24 keycodes
+            // unmapped (NoSymbol), so niri never sees an "F13" keysym and
+            // keysym-based binds like the quake terminal can't fire. This
+            // xkb option assigns F13-F24 to those keycodes. (Setting an
+            // option here means niri no longer reads the layout from
+            // locale1; our layout is plain "us", which is also the default.)
+            options "fkeys:basic_13-24"
         }
 
         // Enable numlock on startup, omitting this setting disables it.
@@ -164,7 +172,13 @@ overview {
 environment {
     XDG_CURRENT_DESKTOP "niri"
     QT_QPA_PLATFORM "wayland"
-    QT_QPA_PLATFORMTHEME "gtk3"
+    // Use KDE's plasma-integration platform theme so KDE/Qt apps (Dolphin,
+    // Ark, etc.) pick up the Breeze color scheme from ~/.config/kdeglobals -
+    // including dark mode - instead of falling back to a light Breeze. The DMS
+    // guide suggests "gtk3" here, but that leaves KDE apps stuck on light; with
+    // "kde" they match the KDE session. (Trade-off: Qt apps follow Breeze, not
+    // DMS's matugen colors.)
+    QT_QPA_PLATFORMTHEME "kde"
     ELECTRON_OZONE_PLATFORM_HINT "auto"
 }
 
@@ -176,6 +190,22 @@ spawn-at-startup "dms" "run"
 // Xwayland support for X11-only applications. niri detects the satellite and
 // sets DISPLAY automatically when the binary is running.
 spawn-at-startup "xwayland-satellite"
+
+// Auto-unlock KWallet with the password PAM captured at login. The login PAM
+// stack (pam_kwallet) stashes the password in $PAM_KWALLET5_LOGIN; pam_kwallet_init
+// hands it to kwalletd to open the wallet. KDE runs this via
+// plasma-kwallet-pam.service; niri does not, so without it the wallet stays
+// locked and apps get a password prompt every session. (Works because the
+// wallet password matches the login password.)
+spawn-at-startup "/usr/libexec/pam_kwallet_init"
+
+// Secret Service for the niri session. ksecretd bridges KWallet to
+// org.freedesktop.secrets, which apps like Zed use to store auth tokens. KDE
+// starts this via Plasma; niri does not, so without it Zed (and any libsecret
+// app) can't persist credentials and you get logged out. Brave's secret goes
+// through the xdg-desktop-portal Secret backend instead, pointed at kwallet by
+// etc/xdg-desktop-portal/niri-portals.conf.
+spawn-at-startup "ksecretd"
 hotkey-overlay {
     skip-at-startup
 }
@@ -277,6 +307,29 @@ recent-windows {
         Alt+grave       { next-window filter="app-id"; }
         Alt+Shift+grave { previous-window filter="app-id"; }
     }
+}
+
+// Quake-style drop-down Ghostty terminal. niri can't serve Ghostty's native
+// quick terminal (no global-shortcuts portal, no external toggle), so we run a
+// dedicated floating Ghostty instance and toggle it with tishy-ghostty-quake,
+// which hides it by parking it below all workspaces. This rule floats and sizes
+// that instance; the F13 toggle bind lives in dms/binds.kdl.
+window-rule {
+    match app-id=r#"^com\.mitchellh\.ghostty\.quake$"#
+    open-floating true
+    default-column-width { proportion 0.5; }
+    default-window-height { proportion 0.6; }
+    default-floating-position x=0 y=0 relative-to="top"
+}
+
+// Blur behind Zed's translucent background ("DankShell *Transparent" themes).
+// niri offers blur to apps via the ext-background-effect protocol and honors it
+// by default, but Zed only sets the "blurred" theme hint without requesting it
+// over that protocol - so we opt its window in explicitly. Blur applies behind
+// the translucent regions; opaque UI is unaffected.
+window-rule {
+    match app-id=r#"^dev\.zed\.Zed$"#
+    background-effect { blur true; }
 }
 
 // Include dms files

@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+# Quake-style drop-down terminal toggle for Ghostty under niri.
+#
+# niri does not implement the global-shortcuts portal, and Ghostty 1.3 has no
+# CLI/IPC action to toggle its built-in quick terminal from outside the process
+# (only `global:` keybinds, which niri can't serve). So instead of Ghostty's
+# native quick terminal we emulate one: a dedicated floating Ghostty instance
+# with its own app-id that this script summons onto the focused workspace or
+# parks below all workspaces to hide it. Bind a key to it in niri (binds.kdl).
+#
+# Requires: niri msg, jq, ghostty. The niri window rule matching $app_id makes
+# the window float and sizes it as a drop-down.
+
+set -euo pipefail
+
+app_id="com.mitchellh.ghostty.quake"
+
+win="$(niri msg --json windows | jq -c --arg a "$app_id" \
+    'map(select(.app_id == $a)) | first')"
+
+if [[ -z "$win" || "$win" == "null" ]]; then
+    # Not running yet: launch a dedicated instance. --gtk-single-instance=false
+    # forces a separate process so --class actually sets a distinct app-id
+    # rather than joining the primary Ghostty instance.
+    exec ghostty --class="$app_id" --gtk-single-instance=false
+fi
+
+win_id="$(jq -r '.id' <<<"$win")"
+win_ws="$(jq -r '.workspace_id' <<<"$win")"
+win_focused="$(jq -r '.is_focused' <<<"$win")"
+
+# Read workspaces once. The focused workspace is where we summon the terminal;
+# the highest index is niri's trailing (always-empty) workspace, where we park
+# it to hide. Parking at the bottom avoids a declared stash workspace, which
+# would sit at index 1 and shift the numbered Mod+1..9 binds; niri garbage-
+# collects the vacated workspace on show.
+workspaces="$(niri msg --json workspaces)"
+fws="$(jq -c 'map(select(.is_focused)) | first' <<<"$workspaces")"
+fws_id="$(jq -r '.id' <<<"$fws")"
+fws_idx="$(jq -r '.idx' <<<"$fws")"
+hide_idx="$(jq -r 'map(.idx) | max' <<<"$workspaces")"
+
+if [[ "$win_ws" == "$fws_id" && "$win_focused" == "true" ]]; then
+    # Already here and focused: park it below all workspaces, keep focus here.
+    niri msg action move-window-to-workspace --window-id "$win_id" --focus false "$hide_idx"
+else
+    # Hidden, on another workspace, or unfocused: summon it to the focused
+    # workspace and focus it, so the terminal follows you between workspaces
+    # instead of only toggling on the one it was opened on.
+    niri msg action move-window-to-workspace --window-id "$win_id" --focus true "$fws_idx"
+    niri msg action focus-window --id "$win_id"
+fi
