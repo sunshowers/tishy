@@ -54,3 +54,26 @@ dnf5 -y install \
 for repo in "${copr_repos[@]}"; do
     dnf5 -y copr disable "$repo"
 done
+
+# niri drives screencasting through GNOME's Mutter ScreenCast D-Bus interface,
+# so screen sharing (e.g. picking a window in a browser) needs the GNOME
+# xdg-desktop-portal backend. tishy's KDE base only ships the gtk and kde
+# backends, and niri-portals.conf (shipped by the niri package) already prefers
+# "gnome", so we just need the backend present. It is only selected under niri;
+# the KDE session keeps using the kde backend.
+dnf5 -y install xdg-desktop-portal-gnome
+
+# The KDE Xwayland video bridge autostarts in every session, but under niri it
+# is non-functional (it relies on the Plasma screencast portal) and shows up as
+# a black fullscreen window. Exclude it from the niri session only; it stays
+# active under KDE, where X11 apps still use it.
+bridge_autostart="/etc/xdg/autostart/org.kde.xwaylandvideobridge.desktop"
+if [[ -f "$bridge_autostart" ]] && ! grep -q '^NotShowIn=' "$bridge_autostart"; then
+    printf 'NotShowIn=niri;\n' >> "$bridge_autostart"
+fi
+
+# /etc/skel only seeds *new* home directories, so enable a user service that
+# copies the niri config into existing accounts on first graphical login. It is
+# non-destructive and short-circuits under KDE; see the script for details.
+chmod +x /usr/local/libexec/tishy-niri-seed
+systemctl --global enable tishy-niri-seed.service

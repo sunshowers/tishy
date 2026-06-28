@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+# Seed a user's niri config from /etc/skel on first graphical login.
+#
+# /etc/skel only populates *new* home directories, so existing accounts never
+# receive the niri config baked into the image. This oneshot copies it into
+# place the first time it runs for a user. It is deliberately non-destructive:
+# if ~/.config/niri already exists, it leaves it untouched (spacium's variant
+# moves the existing config aside, which we do not want for a multi-session box
+# where the user may have hand-tuned niri).
+
+set -euo pipefail
+
+skel_niri="/etc/skel/.config/niri"
+target_niri="${XDG_CONFIG_HOME:-$HOME/.config}/niri"
+
+if [[ ! -d "$skel_niri" ]]; then
+    echo "tishy-niri-seed: $skel_niri missing; nothing to seed" >&2
+    exit 0
+fi
+
+if [[ -e "$target_niri" ]]; then
+    # User already has a niri config; never clobber it.
+    exit 0
+fi
+
+mkdir -p "$(dirname "$target_niri")"
+cp -r "$skel_niri" "$target_niri"
+echo "tishy-niri-seed: seeded niri config into $target_niri"

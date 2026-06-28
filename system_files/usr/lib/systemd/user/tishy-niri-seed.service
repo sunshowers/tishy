@@ -1,0 +1,14 @@
+[Unit]
+Description=Seed niri config from /etc/skel for existing users
+# Only meaningful inside a graphical session; harmless under KDE because the
+# seed script short-circuits when ~/.config/niri already exists.
+After=graphical-session-pre.target
+ConditionPathExists=!%h/.config/niri
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/tishy-niri-seed
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical-session.target
