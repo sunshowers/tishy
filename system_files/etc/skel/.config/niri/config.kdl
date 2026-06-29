@@ -191,21 +191,15 @@ spawn-at-startup "dms" "run"
 // sets DISPLAY automatically when the binary is running.
 spawn-at-startup "xwayland-satellite"
 
-// Auto-unlock KWallet with the password PAM captured at login. The login PAM
-// stack (pam_kwallet) stashes the password in $PAM_KWALLET5_LOGIN; pam_kwallet_init
-// hands it to kwalletd to open the wallet. KDE runs this via
-// plasma-kwallet-pam.service; niri does not, so without it the wallet stays
-// locked and apps get a password prompt every session. (Works because the
-// wallet password matches the login password.)
-spawn-at-startup "/usr/libexec/pam_kwallet_init"
-
-// Secret Service for the niri session. ksecretd bridges KWallet to
-// org.freedesktop.secrets, which apps like Zed use to store auth tokens. KDE
-// starts this via Plasma; niri does not, so without it Zed (and any libsecret
-// app) can't persist credentials and you get logged out. Brave's secret goes
-// through the xdg-desktop-portal Secret backend instead, pointed at kwallet by
-// etc/xdg-desktop-portal/niri-portals.conf.
-spawn-at-startup "ksecretd"
+// KWallet / Secret Service unlock is handled entirely by the login manager, not
+// here. plasmalogin's PAM stack runs pam_kwallet5 and launches
+// `ksecretd --pam-login` inside the login session scope, which unlocks the
+// kdewallet collection with the login password and registers
+// org.freedesktop.secrets. Spawning pam_kwallet_init or ksecretd again from niri
+// starts a second, password-less ksecretd ("Lacking a socket") and makes the
+// Secret xdg-desktop-portal backend fail to register ("Connection already
+// associated with an application ID"), which hangs portal Secret requests from
+// sandboxed apps like Flatpak Signal. So we deliberately do not spawn them.
 hotkey-overlay {
     skip-at-startup
 }
@@ -327,8 +321,26 @@ window-rule {
 // by default, but Zed only sets the "blurred" theme hint without requesting it
 // over that protocol - so we opt its window in explicitly. Blur applies behind
 // the translucent regions; opaque UI is unaffected.
+//
+// The `popups` block extends blur to Zed's xdg-popups (right-click context
+// menus, completion menus, tooltips), which are separate surfaces from the
+// toplevel and so aren't covered by the rule above. geometry-corner-radius
+// matches Zed's rounded menus so the blur doesn't bleed past their corners.
 window-rule {
     match app-id=r#"^dev\.zed\.Zed$"#
+    background-effect { blur true; }
+    popups {
+        geometry-corner-radius 8
+        background-effect { blur true; }
+    }
+}
+
+// Blur behind Ghostty's translucent background (when background-opacity < 1).
+// Same situation as Zed: niri only blurs when an app opts in over the
+// ext-background-effect protocol, and Ghostty doesn't request it - so we opt its
+// windows in explicitly. Matches both the regular window and the quake dropdown.
+window-rule {
+    match app-id=r#"^com\.mitchellh\.ghostty(\.quake)?$"#
     background-effect { blur true; }
 }
 
