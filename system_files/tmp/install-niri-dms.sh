@@ -26,12 +26,14 @@ for repo in "${copr_repos[@]}"; do
 done
 
 # Package set drawn from spacium's build, minus the display-manager swap
-# (greetd, dms-greeter) and ghostty, which tishy already installs. adw-gtk3 is
-# the base GTK3 theme that DMS's matugen GTK theming layers onto (it sets
-# gtk-theme to adw-gtk3-dark); without it GTK3 apps fall back to light Adwaita.
+# (greetd, dms-greeter) and ghostty, which tishy already installs. The
+# adw-gtk3-theme package provides the adw-gtk3-dark GTK3 theme that DMS's matugen
+# GTK theming layers onto (it sets gtk-theme to adw-gtk3-dark); without it GTK3
+# apps fall back to light Adwaita. (Fedora ships this as adw-gtk3-theme; the bare
+# adw-gtk3 name spacium uses does not resolve on our base.)
 dnf5 -y install \
     acl \
-    adw-gtk3 \
+    adw-gtk3-theme \
     bluetui \
     breakpad \
     cava \
