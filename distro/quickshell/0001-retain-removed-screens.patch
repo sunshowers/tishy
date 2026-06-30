@@ -1,0 +1,60 @@
+From d69e48e7ca86974a468bf6226f951bdbaf001eb0 Mon Sep 17 00:00:00 2001
+From: Rain <rain@sunshowers.io>
+Date: Mon, 29 Jun 2026 14:32:54 -0700
+Subject: [PATCH] core/screen: retain removed screens to avoid use-after-free
+
+Previously, when a screen was disconnected, `QuickshellTracked::updateScreens` deleted its `QuickshellScreenInfo` wrapper. But a copy of that `QObject*` may have been boxed into a `QVariant` and left a bare, unguarded pointer. Deleting the wrapper then dangles that pointer, and the next time the engine re-wraps it (the process segfaults).
+
+This was observed as intermittent crashes on monitor wakeup under niri with DankMaterialShell, confirmed from two core dumps to be a freed `QuickshellScreenInfo` inside a `Toplevel.screens` list retained by a model.
+
+Both core dumps had the following in them:
+
+```
+screens QVariant @ 0x7fecc79e4eb8  metatype='QList<QuickshellScreenInfo*>'
+  inline QList {d=0x7fecf1921320, ptr=0x7fecf1921330, size=1}
+    screens[0] = 0x7fed0313b6a0  <-- freed (vtable=0x1 d_ptr=0x7)
+```
+
+Fix this by not actually deleting lost screens and instead just putting them in an internal vector. Note that this is a memory leak, in the sense that the list will keep growing in an unbounded fashion. But screens are pretty bounded, so it seems like a relatively straightforward way to handle a somewhat rare occurrence.
+
+Note that `deleteLater` doesn't quite work here, because these raw pointers can be held across event loop iterations. A more structural fix is likely some kind of generational arena + weak index pattern, but that's outside the scope of this PR.
+---
+ src/core/qmlglobal.cpp | 4 +++-
+ src/core/qmlglobal.hpp | 5 +++++
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+diff --git a/src/core/qmlglobal.cpp b/src/core/qmlglobal.cpp
+index 0bee314..9049e7a 100644
+--- a/src/core/qmlglobal.cpp
++++ b/src/core/qmlglobal.cpp
+@@ -127,8 +127,10 @@ void QuickshellTracked::updateScreens() {
+ 	next:;
+ 	}
+ 
++	// Retain removed screens rather than deleting them, since users might hold on to
++	// a bare `QObject*` (via a `QVariant`) pointing at the old screen.
+ 	for (auto* oldScreen: this->screens) {
+-		oldScreen->deleteLater();
++		this->mDeadScreens.push_back(oldScreen);
+ 	}
+ 
+ 	this->screens = newScreens;
+diff --git a/src/core/qmlglobal.hpp b/src/core/qmlglobal.hpp
+index 2887a93..fce8abd 100644
+--- a/src/core/qmlglobal.hpp
++++ b/src/core/qmlglobal.hpp
+@@ -77,6 +77,11 @@ private slots:
+ 
+ signals:
+ 	void screensChanged();
++
++private:
++	// Screens removed from the system are stored here instead of being
++	// deleted, since users might hold on to bare `QObject*`s pointing at them.
++	QVector<QuickshellScreenInfo*> mDeadScreens;
+ };
+ 
+ class QuickshellGlobal: public QObject {
+-- 
+2.53.0
+
