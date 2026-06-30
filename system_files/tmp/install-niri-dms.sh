@@ -15,7 +15,14 @@ echo "::group::Executing install-niri-dms"
 trap 'echo "::endgroup::"' EXIT
 
 # COPRs that host niri, DMS, quickshell, and the DMS helper tools.
+#
+# rain1094/quickshell-tishy is a temporary fork of avengemedia/danklinux's
+# quickshell-git, carrying quickshell PR #879 (retain removed screens) to fix a
+# monitor-wakeup use-after-free crash. Its Epoch:1 bump makes it win over
+# danklinux's build, so quickshell-git below installs the patched one. Drop this
+# repo (and distro/quickshell) once #879 lands upstream and danklinux rebuilds.
 copr_repos=(
+    rain1094/quickshell-tishy
     irunatbullets/spacium-extras
     avengemedia/dms
     avengemedia/danklinux
