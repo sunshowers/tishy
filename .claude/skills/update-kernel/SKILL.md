@@ -113,11 +113,35 @@ Or trigger manually with the version input:
 gh workflow run build.yml -R sunshowers/kernel-tishy --ref main -f version=7.1.3-ogc3
 ```
 
-## After the kernel builds
+## Local builds
 
-The kernel build takes ~2 hours. Once it completes, the OCI image is pushed to
-`ghcr.io/sunshowers/kernel-tishy:latest-f43-x86_64`. The tishy-deck build picks it
-up on its next daily run, or trigger it:
+`~/dev/kernel-tishy/build-local.sh` runs the same `build.sh` core as CI inside a
+`fedora:43` container via podman (~15-25 min with warm ccache; the ccache lives
+in `~/.cache/kernel-tishy-ccache`). It produces
+`localhost/kernel-tishy:latest-f43-x86_64`. Build the deck image against it:
+
+```bash
+cd ~/dev/tishy
+podman build --no-cache -f Containerfile.deck \
+  --build-arg KERNEL_REF=localhost/kernel-tishy:latest-f43-x86_64 \
+  -t tishy-deck:local .
+```
+
+**`--no-cache` is required when the kernel image changed**: podman does not
+key the `RUN --mount=type=bind,from=kernel` layer on the kernel stage's
+content, so a cached build silently ships the previous kernel with exit 0.
+Verify the result before deploying:
+
+```bash
+podman run --rm localhost/tishy-deck:local \
+  bash -c 'ls /usr/lib/modules/; grep CONFIG_IA32_EMULATION /usr/lib/modules/*/config'
+```
+
+## After the kernel builds in CI
+
+The CI kernel build takes ~2.5 hours. Once it completes, the OCI image is pushed
+to `ghcr.io/sunshowers/kernel-tishy:latest-f43-x86_64`. The tishy-deck build
+picks it up on its next daily run, or trigger it:
 
 ```bash
 gh workflow run build.yml -R sunshowers/tishy
