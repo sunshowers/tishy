@@ -1,110 +1,123 @@
 ---
 name: update-kernel
-description: Updates the tishy-deck custom kernel (HDMI FRL patches on Linux 6.19). Handles three scenarios: new FRL patches from mkopec/linux, base kernel version bumps, and full rebuild triggers. Use when the user mentions updating the kernel, FRL patches, kernel-tishy, or HDMI FRL.
+description: Updates the tishy-deck custom kernel (OGC Fedora kernel 7.1.x with HDMI FRL + VRR patches). Handles three scenarios: new FRL patches from John-Gee/7-1-frl, OGC base kernel version bumps, and full rebuild triggers. Use when the user mentions updating the kernel, FRL patches, kernel-tishy, HDMI FRL, or the OGC kernel.
 ---
 
 # Updating the tishy-deck kernel
 
-tishy-deck uses a custom kernel built in a separate repo (`kernel-tishy`). See [architecture.md](architecture.md) for the two-repo layout and design decisions.
+tishy-deck uses a custom kernel built in a separate repo (`kernel-tishy`, at
+`~/dev/kernel-tishy`). It is an [OpenGamingCollective (OGC)](https://github.com/OpenGamingCollective/kernel-packages)
+Fedora kernel (vanilla `linux-7.1.x` + OGC `monolithic.patch`) with the HDMI FRL +
+VRR patches from [`John-Gee/7-1-frl`](https://github.com/John-Gee/7-1-frl) layered
+on top. See [architecture.md](architecture.md) for the full layout.
 
 ## Determine the update type
 
 Ask the user which scenario applies, then follow the corresponding workflow.
 
-### Scenario A: new FRL patches from mkopec
+### Scenario A: new FRL patches from John-Gee/7-1-frl
 
-The `hdmi_frl_stable` branch at `github.com/mkopec/linux` has been updated.
-
-```
-Progress:
-- [ ] 1. Download the latest FRL patch artifact
-- [ ] 2. Strip non-kernel diffs from the patch
-- [ ] 3. Replace patch-5-hdmi-frl.patch in kernel-tishy
-- [ ] 4. Commit and push to trigger a build
-```
-
-**Step 1**: Download the latest patch from the most recent workflow run.
-
-```bash
-gh run list -R mkopec/linux --branch hdmi_frl_stable --limit 1
-gh run download <RUN_ID> -R mkopec/linux -n Patch -D /tmp/frl-patch
-```
-
-**Step 2**: Strip `.github/` and `.gitignore` diffs — they're repo metadata, not kernel code.
-
-```python
-import re
-with open('/tmp/frl-patch/0001-amdgpu-frl.patch', 'r') as f:
-    content = f.read()
-parts = re.split(r'(diff --git [^\n]+\n)', content)
-result = []
-skip = False
-for part in parts:
-    if part.startswith('diff --git'):
-        skip = '.github/' in part or part.strip().endswith('b/.gitignore')
-    if not skip:
-        result.append(part)
-with open('/tmp/frl-patch/0001-amdgpu-frl.patch', 'w') as f:
-    f.write(''.join(result))
-```
-
-**Step 3**: Copy to `~/dev/kernel-tishy/patch-5-hdmi-frl.patch`.
-
-**Step 4**: Commit and push. The GitHub Actions workflow triggers on push to `main`.
-
-### Scenario B: bump the base kernel version
-
-A new stable kernel is out (e.g. 6.19.3 → 6.19.4) and you want to update.
+The `John-Gee/7-1-frl` repo has updated patches.
 
 ```
 Progress:
-- [ ] 1. Verify the new version exists on cdn.kernel.org
-- [ ] 2. Update version strings in kernel.spec
-- [ ] 3. Verify the FRL patch base matches (check mkopec's stable tag)
-- [ ] 4. Bump the pkgrelease if needed
-- [ ] 5. Commit and push
+- [ ] 1. Download the four patch files
+- [ ] 2. Vendor 0001, 0002, 0004 verbatim; adapt 0003 (hdmi-frl) for the OGC base
+- [ ] 3. Validate zero-reject application against the pinned OGC tag
+- [ ] 4. Commit and push kernel-tishy to trigger a build
 ```
 
-**Step 2** — there are several version strings to update in `kernel.spec`:
-
-```
-%define specrpmversion <NEW_VERSION>
-%define specversion <NEW_VERSION>
-%define patchversion <MAJOR.MINOR>
-%define tarfile_release <NEW_VERSION>
-%define patchlevel <MINOR>
-%define kabiversion <NEW_VERSION>
-```
-
-**Step 3** — the FRL patch is a diff against a `stable` tag in mkopec/linux. Check what kernel version that tag points to:
+**Step 1**: Fetch the source files (paths are the repo's `source` array):
 
 ```bash
-gh api repos/mkopec/linux/commits/stable --jq '.commit.message' | head -1
+for f in 0001-fix-amd-color-manager.patch 0002-fix-dc-plane-cm-build-error.patch \
+         hdmi_frl_amdnext.patch hdmi_vrr_amdnext.patch; do
+  gh api "repos/John-Gee/7-1-frl/contents/$f" --jq '.content' | base64 -d > "/tmp/frl/$f"
+done
 ```
 
-If the stable tag has moved to a new kernel version, re-download the FRL patch (scenario A). If it hasn't, the existing patch should still apply.
+**Step 2**: Map them to `kernel-tishy/patches/`:
+
+| Source | Destination | Handling |
+| --- | --- | --- |
+| `0001-fix-amd-color-manager.patch` | `0001-fix-amd-color-manager.patch` | verbatim |
+| `0002-fix-dc-plane-cm-build-error.patch` | `0002-fix-dc-plane-cm-build-error.patch` | verbatim |
+| `hdmi_frl_amdnext.patch` | `0003-hdmi-frl.patch` | **adapt** |
+| `hdmi_vrr_amdnext.patch` | `0004-hdmi-vrr.patch` | verbatim |
+
+The upstream patches target an amd-staging ("amdnext") tree. On OGC's stable base
+most files apply cleanly, but a few `amdgpu_dm.c` hunks miss because OGC lacks the
+amd-staging structure. To adapt `0003-hdmi-frl.patch`:
+
+1. Fetch the OGC source tree at the pinned tag and apply `0001`, `0002`, then
+   `hdmi_frl_amdnext.patch` with `patch -p1 --fuzz=2 --forward`. Note the `.rej`.
+2. Resolve each rejected hunk by making the equivalent change against OGC's code
+   (the pattern is always replacing an exact `== SIGNAL_TYPE_HDMI_TYPE_A` compare
+   with `dc_is_hdmi_signal(...)`; do **not** reintroduce amd-staging-only blocks).
+3. Regenerate only the conflicting file's diff block and splice it back into the
+   patch so every other file stays byte-identical to upstream. See
+   `kernel-tishy/patches/README.md` for the recorded resolution.
+
+**Step 3**: On a pristine copy of the OGC tag tree, apply `0001`, `0002`,
+`0003-hdmi-frl.patch`, `0004-hdmi-vrr.patch` in order and confirm **zero rejects**.
+
+**Step 4**: Commit and push `kernel-tishy`. The workflow triggers on push to `main`.
+
+### Scenario B: bump the OGC base kernel version
+
+A newer OGC kernel tag is out (e.g. `v7.1.3-ogc3` → `v7.1.4-ogc1`).
+
+```
+Progress:
+- [ ] 1. Confirm the tag exists and has monolithic.patch assets
+- [ ] 2. Update KERNEL_VERSION
+- [ ] 3. Re-validate the FRL patches still apply against the new tag
+- [ ] 4. Commit and push
+```
+
+**Step 1** — verify the tag and its release assets:
+
+```bash
+gh api repos/OpenGamingCollective/linux/releases/tags/v7.1.4-ogc1 \
+  --jq '.assets[].name'   # expect monolithic.patch{,.sig}, public.key
+```
+
+**Step 2** — set the version in one place:
+
+```bash
+echo 7.1.4-ogc1 > ~/dev/kernel-tishy/KERNEL_VERSION
+```
+
+The spec version strings (`@@BASEKVER@@`, `@@STABLEKVER@@`, `@@OGCVER@@`,
+`@@BUILDNUM@@`) are substituted from this value by the workflow; no spec edit
+needed.
+
+**Step 3** — re-run the Scenario A validation against the new tag. If the FRL
+patches reject on the new base, re-adapt `0003-hdmi-frl.patch` (Scenario A step 2).
+If OGC rotated their signing key, refresh `public.key` from the release assets.
 
 ### Scenario C: force a full rebuild
 
-The kernel-tishy image is already built but you want to rebuild (e.g., after config changes).
+The image is already built but you want to rebuild (e.g. after a config change).
 
-Tag the current commit and push. Tags matching `*-frl*` trigger the build workflow:
+Tag the current commit and push (tags matching `*-frl*` trigger the workflow):
 
 ```bash
 cd ~/dev/kernel-tishy
-jj tag create 6.19.3-frl2  # bump the suffix as appropriate
-jj git push --remote origin
+jj bookmark create 7.1.3-frl1   # or an appropriate suffix; then git push the tag
 ```
 
-Or trigger manually via `workflow_dispatch`:
+Or trigger manually with the version input:
 
 ```bash
-gh workflow run build.yml -R sunshowers/kernel-tishy --ref main
+gh workflow run build.yml -R sunshowers/kernel-tishy --ref main -f version=7.1.3-ogc3
 ```
 
 ## After the kernel builds
 
-The kernel build takes ~2 hours. Once it completes, the OCI container is pushed to GHCR. The tishy-deck image build picks it up automatically on its next daily run, or you can trigger it:
+The kernel build takes ~2 hours. Once it completes, the OCI image is pushed to
+`ghcr.io/sunshowers/kernel-tishy:latest-f43-x86_64`. The tishy-deck build picks it
+up on its next daily run, or trigger it:
 
 ```bash
 gh workflow run build.yml -R sunshowers/tishy
@@ -115,7 +128,7 @@ gh workflow run build.yml -R sunshowers/tishy
 ```bash
 sudo bootc switch --enforce-container-sigpolicy ghcr.io/sunshowers/tishy-deck:latest
 # Reboot, then verify:
-uname -r  # should show the frl suffix
+uname -r  # should show the ogc suffix, e.g. 7.1.3-ogc3.N.fc43.x86_64
 ```
 
 Rollback if needed: `sudo bootc rollback`.
