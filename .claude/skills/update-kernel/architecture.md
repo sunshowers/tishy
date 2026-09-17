@@ -22,6 +22,11 @@ patches as RPMs, packages them into a FROM-able OCI image, and pushes to
 swapping the kernel with RPMs from the kernel-tishy image, and pushing to
 `ghcr.io/sunshowers/tishy-deck`.
 
+The base image follows `latest`. `KERNEL_FEDORA_VERSION` selects the Fedora
+release used to build the custom kernel (currently 43); it does not select the
+base image release. A newer base requires checking compatibility with these
+kernel RPMs. CI derives output image tags from the base image version.
+
 ## Kernel build pipeline
 
 ```

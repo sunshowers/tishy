@@ -15,18 +15,14 @@ on:
   workflow_dispatch:
 
 env:
-  ARG_SOURCE_IMAGE: "bazzite" # see Containerfile for list of possible upstream images
-  ARG_FEDORA_VERSION: "43" # see Containerfile
   IMAGE_REGISTRY: "ghcr.io/${{ github.repository_owner }}" # do not edit
 
 jobs:
   push-ghcr:
     name: Build and push image
     runs-on: ubuntu-24.04
-    # The env variables starting with "ARG_" are described in the Containerfile of this repo.
-    # The values here are defaults and should be modified if using a different image, needing
-    # nvidia, a specific nvidia driver, or a different Fedora version.
     env:
+      ARG_SOURCE_IMAGE: "bazzite"
       MY_IMAGE_NAME: "tishy" # the name of the image produced by this build
 
     permissions:
@@ -50,13 +46,25 @@ jobs:
       - name: Check just syntax
         uses: ublue-os/just-action@v1
 
+      - name: Get current version
+        id: labels
+        shell: bash
+        run: |
+          ver=$(skopeo inspect "docker://ghcr.io/ublue-os/${ARG_SOURCE_IMAGE}:latest" | jq -er '.Labels["org.opencontainers.image.version"] | select(type == "string" and length > 0)')
+          if [[ ! "$ver" =~ ^([0-9]+)\. ]]; then
+            echo "Unexpected Bazzite version: $ver" >&2
+            exit 1
+          fi
+          echo "FEDORA_VERSION=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$ver" >> "$GITHUB_OUTPUT"
+
       - name: Generate tags
         id: generate-tags
         shell: bash
         run: |
           # Generate a timestamp for creating an image version history
           TIMESTAMP="$(date +%Y%m%d)"
-          VARIANT="${{ env.ARG_FEDORA_VERSION }}"
+          VARIANT="${{ steps.labels.outputs.FEDORA_VERSION }}"
 
           COMMIT_TAGS=()
           BUILD_TAGS=()
@@ -97,12 +105,6 @@ jobs:
 
           echo "alias_tags=${alias_tags[*]}" >> $GITHUB_OUTPUT
 
-      - name: Get current version
-        id: labels
-        run: |
-          ver=$(skopeo inspect docker://ghcr.io/ublue-os/${{ env.ARG_SOURCE_IMAGE }}}:${{ env.ARG_FEDORA_VERSION }}${{ env.ARG_NVIDIA_VERSION }} | jq -r '.Labels["org.opencontainers.image.version"]')
-          echo "VERSION=$ver" >> $GITHUB_OUTPUT
-
       # Build metadata
       - name: Image Metadata
         uses: docker/metadata-action@v5
@@ -129,8 +131,6 @@ jobs:
             ${{ steps.generate-tags.outputs.alias_tags }}
           build-args: |
             SOURCE_IMAGE=${{ env.ARG_SOURCE_IMAGE }}
-            FEDORA_VERSION=${{ env.ARG_FEDORA_VERSION }}
-            FEDORA_MAJOR_VERSION=${{ env.ARG_FEDORA_VERSION }}
           labels: ${{ steps.meta.outputs.labels }}
           # cache intermediate layers to speed up builds
           layers: true
@@ -184,6 +184,7 @@ jobs:
     name: Build and push deck image
     runs-on: ubuntu-24.04
     env:
+      ARG_SOURCE_IMAGE: "bazzite-deck"
       MY_IMAGE_NAME: "tishy-deck"
 
     permissions:
@@ -206,12 +207,24 @@ jobs:
       - name: Check just syntax
         uses: ublue-os/just-action@v1
 
+      - name: Get current version
+        id: labels
+        shell: bash
+        run: |
+          ver=$(skopeo inspect "docker://ghcr.io/ublue-os/${ARG_SOURCE_IMAGE}:latest" | jq -er '.Labels["org.opencontainers.image.version"] | select(type == "string" and length > 0)')
+          if [[ ! "$ver" =~ ^([0-9]+)\. ]]; then
+            echo "Unexpected Bazzite version: $ver" >&2
+            exit 1
+          fi
+          echo "FEDORA_VERSION=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$ver" >> "$GITHUB_OUTPUT"
+
       - name: Generate tags
         id: generate-tags
         shell: bash
         run: |
           TIMESTAMP="$(date +%Y%m%d)"
-          VARIANT="${{ env.ARG_FEDORA_VERSION }}"
+          VARIANT="${{ steps.labels.outputs.FEDORA_VERSION }}"
 
           COMMIT_TAGS=()
           BUILD_TAGS=()
@@ -248,12 +261,6 @@ jobs:
 
           echo "alias_tags=${alias_tags[*]}" >> $GITHUB_OUTPUT
 
-      - name: Get current version
-        id: labels
-        run: |
-          ver=$(skopeo inspect docker://ghcr.io/ublue-os/bazzite-deck:${{ env.ARG_FEDORA_VERSION }} | jq -r '.Labels["org.opencontainers.image.version"]')
-          echo "VERSION=$ver" >> $GITHUB_OUTPUT
-
       - name: Image Metadata
         uses: docker/metadata-action@v5
         id: meta
@@ -276,7 +283,7 @@ jobs:
           tags: |
             ${{ steps.generate-tags.outputs.alias_tags }}
           build-args: |
-            FEDORA_MAJOR_VERSION=${{ env.ARG_FEDORA_VERSION }}
+            SOURCE_IMAGE=${{ env.ARG_SOURCE_IMAGE }}
           labels: ${{ steps.meta.outputs.labels }}
           layers: true
           oci: false
@@ -324,10 +331,8 @@ jobs:
   push-ghcr-nvidia:
     name: Build and push Nvidia image
     runs-on: ubuntu-24.04
-    # The env variables starting with "ARG_" are described in the Containerfile of this repo.
-    # The values here are defaults and should be modified if using a different image, needing
-    # nvidia, a specific nvidia driver, or a different Fedora version.
     env:
+      ARG_SOURCE_IMAGE: "bazzite-nvidia-open"
       MY_IMAGE_NAME: "tishy-nvidia" # the name of the image produced by this build
 
     permissions:
@@ -343,13 +348,25 @@ jobs:
       - name: Check just syntax
         uses: ublue-os/just-action@v1
 
+      - name: Get current version
+        id: labels
+        shell: bash
+        run: |
+          ver=$(skopeo inspect "docker://ghcr.io/ublue-os/${ARG_SOURCE_IMAGE}:latest" | jq -er '.Labels["org.opencontainers.image.version"] | select(type == "string" and length > 0)')
+          if [[ ! "$ver" =~ ^([0-9]+)\. ]]; then
+            echo "Unexpected Bazzite version: $ver" >&2
+            exit 1
+          fi
+          echo "FEDORA_VERSION=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$ver" >> "$GITHUB_OUTPUT"
+
       - name: Generate tags
         id: generate-tags
         shell: bash
         run: |
           # Generate a timestamp for creating an image version history
           TIMESTAMP="$(date +%Y%m%d)"
-          VARIANT="${{ env.ARG_FEDORA_VERSION }}"
+          VARIANT="${{ steps.labels.outputs.FEDORA_VERSION }}"
 
           COMMIT_TAGS=()
           BUILD_TAGS=()
@@ -390,12 +407,6 @@ jobs:
 
           echo "alias_tags=${alias_tags[*]}" >> $GITHUB_OUTPUT
 
-      - name: Get current version
-        id: labels
-        run: |
-          ver=$(skopeo inspect docker://ghcr.io/ublue-os/${{ env.ARG_SOURCE_IMAGE }}}:${{ env.ARG_FEDORA_VERSION }}${{ env.ARG_NVIDIA_VERSION }} | jq -r '.Labels["org.opencontainers.image.version"]')
-          echo "VERSION=$ver" >> $GITHUB_OUTPUT
-
       # Build metadata
       - name: Image Metadata
         uses: docker/metadata-action@v5
@@ -422,8 +433,6 @@ jobs:
             ${{ steps.generate-tags.outputs.alias_tags }}
           build-args: |
             SOURCE_IMAGE=${{ env.ARG_SOURCE_IMAGE }}
-            FEDORA_VERSION=${{ env.ARG_FEDORA_VERSION }}
-            FEDORA_MAJOR_VERSION=${{ env.ARG_FEDORA_VERSION }}
           labels: ${{ steps.meta.outputs.labels }}
           # cache intermediate layers to speed up builds
           layers: true

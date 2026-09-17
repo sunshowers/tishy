@@ -1,15 +1,16 @@
-ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-43}"
+# Fedora release used to build the custom kernel, independent of the base image.
+ARG KERNEL_FEDORA_VERSION=43
+ARG SOURCE_IMAGE=bazzite-deck
 ARG ARCH="${ARCH:-x86_64}"
 
 # Import custom kernel RPMs as a build stage.
-ARG KERNEL_REF="ghcr.io/sunshowers/kernel-tishy:latest-f${FEDORA_MAJOR_VERSION}-${ARCH}"
+ARG KERNEL_REF="ghcr.io/sunshowers/kernel-tishy:latest-f${KERNEL_FEDORA_VERSION}-${ARCH}"
 FROM ${KERNEL_REF} AS kernel
 
-FROM ghcr.io/ublue-os/bazzite-deck:latest AS tishy-deck
+FROM ghcr.io/ublue-os/${SOURCE_IMAGE}:latest AS tishy-deck
 
 ARG IMAGE_NAME="${IMAGE_NAME:-tishy-deck}"
 ARG IMAGE_VENDOR="${IMAGE_VENDOR:-sunshowers}"
-ARG FEDORA_MAJOR_VERSION
 
 COPY system_files /
 

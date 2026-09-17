@@ -1,13 +1,12 @@
-ARG FEDORA_MAJOR_VERSION="${FEDORA_MAJOR_VERSION:-43}"
+ARG SOURCE_IMAGE=bazzite
 
-FROM ghcr.io/ublue-os/bazzite:latest AS tishy-base
+FROM ghcr.io/ublue-os/${SOURCE_IMAGE}:latest AS tishy-base
 
 ARG IMAGE_NAME="${IMAGE_NAME:-tishy}"
 ARG IMAGE_VENDOR="${IMAGE_VENDOR:-sunshowers}"
 ARG IMAGE_FLAVOR="${IMAGE_FLAVOR:-main}"
 ARG IMAGE_BRANCH="${IMAGE_BRANCH:-main}"
 ARG BASE_IMAGE_NAME="${BASE_IMAGE_NAME:-bazzite}"
-ARG FEDORA_MAJOR_VERSION
 
 ## Copy system files over
 COPY system_files /
@@ -17,7 +16,6 @@ COPY system_files /
 RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
     --mount=type=cache,dst=/var/cache/libdnf5 \
     dnf5 -y copr enable -y bazzite-org/bazzite && \
-    dnf5 -y swap '*openh264*' noopenh264 && \
     dnf5 -y install \
         bpftrace \
         code \
@@ -44,15 +42,14 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
 ## XXX: probably should combine everything into one layer
 
 FROM tishy-base AS tishy
-ARG FEDORA_MAJOR_VERSION
 
 ## Install other new packages
 COPY system_files /
 RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
     --mount=type=cache,dst=/var/cache/libdnf5 \
     /tmp/install-brave.sh && \
-    curl -Lo /etc/yum.repos.d/_copr_wezfurlong-wezterm-nightly.repo https://copr.fedorainfracloud.org/coprs/wezfurlong/wezterm-nightly/repo/fedora-"${FEDORA_MAJOR_VERSION}"/wezfurlong-wezterm-nightly-"${FEDORA_MAJOR_VERSION}".repo && \
-    curl -fsSLo "/etc/yum.repos.d/_copr:copr.fedorainfracloud.org:scottames:ghostty.repo" https://copr.fedorainfracloud.org/coprs/scottames/ghostty/repo/fedora-"${FEDORA_MAJOR_VERSION}"/scottames-ghostty-fedora-"${FEDORA_MAJOR_VERSION}".repo && \
+    dnf5 -y copr enable wezfurlong/wezterm-nightly && \
+    dnf5 -y copr enable scottames/ghostty && \
     dnf5 -y install \
         brave-browser \
         ghostty \
