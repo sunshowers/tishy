@@ -10,7 +10,7 @@ binds {
     // because niri lacks the global-shortcuts portal; binding it in niri also
     // stops Ghostty from seeing F13 and opening its own quick terminal.
     F13 repeat=false hotkey-overlay-title="Quake Terminal" {
-        spawn "sh" "-c" "exec $HOME/.local/bin/tishy-ghostty-quake";
+        spawn "tishy-ghostty-quake";
     }
     Mod+Space hotkey-overlay-title="Application Launcher" {
         spawn "dms" "ipc" "call" "spotlight" "toggle";
