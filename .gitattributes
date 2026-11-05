@@ -1,0 +1,4 @@
+# Vendor tuning files are kept byte-for-byte as extracted from the vendor's
+# driver download (UTF-8 BOM, CRLF line endings), so that their SHA-256 can be
+# checked against the provenance recorded beside them. Never normalize them.
+speaker-tuning/**/*.xml -text

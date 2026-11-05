@@ -12,6 +12,8 @@ on:
     paths-ignore:
       - "**.md"
       - "**.txt"
+      # Per-machine speaker tuning data; not part of the image.
+      - "speaker-tuning/**"
   workflow_dispatch:
 
 env:
