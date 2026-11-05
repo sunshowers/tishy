@@ -105,7 +105,7 @@ port falls back to a no-op `Nothing` preset.
 
 - Balanced, Detailed and Warm differ by under 1 dB anywhere in this tuning, so
   there's little to gain from comparing them; see the maintainer's analysis in
-  #73.
+  [speaker-tuning-to-easyeffects#73](https://github.com/antoinecellerier/speaker-tuning-to-easyeffects/issues/73).
 - The converter reports the result as likely quieter than Windows, because the
   tuning's volume leveler ships disabled. Re-run step 3 with
   `--enable autogain` to try it; it can make quiet passages swell, then duck.

@@ -7,7 +7,8 @@
 # *adds* niri as a selectable Wayland session and makes DMS available. It does
 # not swap the display manager (no greetd) or disable the stock session, so the
 # deck experience is left intact. Select "niri" from sddm to launch it; DMS is
-# started from niri's own config (e.g. `spawn-at-startup "dms" "run"`).
+# started as dms.service, pulled in by niri.service (see
+# /usr/lib/systemd/user/niri.service.d/60-dms.conf), so it runs only under niri.
 
 set -eoux pipefail
 
