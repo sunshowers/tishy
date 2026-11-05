@@ -85,7 +85,8 @@ fi
 systemctl --global enable dcal.service
 
 # /etc/skel only seeds *new* home directories, so enable a user service that
-# copies the niri config into existing accounts on first graphical login. It is
-# non-destructive and short-circuits under KDE; see the script for details.
+# copies the niri, DMS, and Ghostty config into existing accounts at graphical
+# login. It only ever creates paths that don't exist yet, so it never touches
+# existing config, under niri or KDE; see the script for details.
 chmod +x /usr/local/libexec/tishy-niri-seed
 systemctl --global enable tishy-niri-seed.service

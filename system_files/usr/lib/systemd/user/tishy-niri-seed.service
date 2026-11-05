@@ -1,9 +1,22 @@
 [Unit]
-Description=Seed niri config from /etc/skel for existing users
-# Only meaningful inside a graphical session; harmless under KDE because the
-# seed script short-circuits when ~/.config/niri already exists.
+Description=Seed niri/DMS desktop config from /etc/skel for existing users
+# Must finish before niri.service starts: if ~/.config/niri/config.kdl is
+# missing, niri writes its own default config there on startup, and this
+# script would then see that file and (correctly, by its rules) never replace
+# it. niri.service shares our After=graphical-session-pre.target, so without
+# Before= the two would race. niri.service BindsTo= graphical-session.target,
+# which wants this unit, so both land in the same transaction and the ordering
+# takes effect.
+#
+# dms.service is ordered After=graphical-session.target, and targets order
+# themselves after the units they want, so DMS likewise never starts before its
+# settings are seeded.
+#
+# There is no ConditionPathExists= here because several independent paths are
+# seeded; the script checks each one and does nothing for paths that already
+# exist, so running on every login costs only a few stat calls.
 After=graphical-session-pre.target
-ConditionPathExists=!%h/.config/niri
+Before=niri.service
 
 [Service]
 Type=oneshot

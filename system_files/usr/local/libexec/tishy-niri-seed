@@ -1,29 +1,55 @@
 #!/usr/bin/env bash
 
-# Seed a user's niri config from /etc/skel on first graphical login.
+# Seed a user's niri/DMS desktop config from /etc/skel on graphical login.
 #
 # /etc/skel only populates *new* home directories, so existing accounts never
-# receive the niri config baked into the image. This oneshot copies it into
-# place the first time it runs for a user. It is deliberately non-destructive:
-# if ~/.config/niri already exists, it leaves it untouched (spacium's variant
-# moves the existing config aside, which we do not want for a multi-session box
-# where the user may have hand-tuned niri).
+# receive the config baked into the image. This oneshot copies each seeded path
+# into place if, and only if, it doesn't exist yet. It is deliberately
+# non-destructive: anything already present is left untouched (spacium's
+# variant moves the existing config aside, which we do not want for a
+# multi-session box where the user may have hand-tuned things).
+#
+# Paths are seeded independently, so a user who already has, say, a Ghostty
+# config still gets the niri config, and vice versa.
 
 set -euo pipefail
 
-skel_niri="/etc/skel/.config/niri"
-target_niri="${XDG_CONFIG_HOME:-$HOME/.config}/niri"
+skel="/etc/skel"
+config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
 
-if [[ ! -d "$skel_niri" ]]; then
-    echo "tishy-niri-seed: $skel_niri missing; nothing to seed" >&2
-    exit 0
+# seed SKEL_REL TARGET: copy $skel/SKEL_REL (file or directory) to TARGET
+# unless TARGET already exists.
+seed() {
+    local src="$skel/$1" target="$2" staging
+
+    if [[ ! -e "$src" ]]; then
+        echo "tishy-niri-seed: $src missing from the image; skipping" >&2
+        return 0
+    fi
+    # -L catches dangling symlinks too: a link the user put there on purpose
+    # is theirs, even if it currently points nowhere.
+    if [[ -e "$target" || -L "$target" ]]; then
+        return 0
+    fi
+
+    mkdir -p "$(dirname "$target")"
+    # Copy to a sibling staging path and rename into place, so that an
+    # interrupted copy never leaves a partial config at $target that later
+    # runs would mistake for the user's own and never repair.
+    staging="$(mktemp -d "$(dirname "$target")/.tishy-seed.XXXXXX")"
+    cp -r "$src" "$staging/payload"
+    mv -T "$staging/payload" "$target"
+    rmdir "$staging"
+    echo "tishy-niri-seed: seeded $target"
+}
+
+seed .config/niri "$config_home/niri"
+seed .config/ghostty/config "$config_home/ghostty/config"
+
+# DMS 2.0 moved its config from ~/.config/DankMaterialShell to ~/.config/dms.
+# If the old location is present, the user has existing DMS settings that DMS
+# itself is responsible for carrying over; seeding the new location first
+# could shadow them, so leave DMS alone entirely in that case.
+if [[ ! -e "$config_home/DankMaterialShell" && ! -L "$config_home/DankMaterialShell" ]]; then
+    seed .config/dms/settings.json "$config_home/dms/settings.json"
 fi
-
-if [[ -e "$target_niri" ]]; then
-    # User already has a niri config; never clobber it.
-    exit 0
-fi
-
-mkdir -p "$(dirname "$target_niri")"
-cp -r "$skel_niri" "$target_niri"
-echo "tishy-niri-seed: seeded niri config into $target_niri"
