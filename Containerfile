@@ -61,6 +61,7 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
         virtiofsd \
         wezterm && \
     /tmp/install-niri-dms.sh && \
+    /tmp/install-fonts.sh && \
     KERNEL_FLAVOR=bazzite /tmp/build-initramfs && \
     /tmp/cleanup.sh && \
     install -d -m 0755 /nix && \
