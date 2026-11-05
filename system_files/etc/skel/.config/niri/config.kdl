@@ -41,37 +41,17 @@ input {
             // xkb option assigns F13-F24 to those keycodes. (Setting an
             // option here means niri no longer reads the layout from
             // locale1; our layout is plain "us", which is also the default.)
-            options "fkeys:basic_13-24"
+            options "compose:ralt,fkeys:basic_13-24"
         }
 
         // Enable numlock on startup, omitting this setting disables it.
         numlock
     }
 
-    // Next sections include libinput settings.
-    // Omitting settings disables them, or leaves them at their default values.
-    // All commented-out settings here are examples, not defaults.
-    touchpad {
-        // off
-        tap
-        // dwt
-        // dwtp
-        // drag false
-        // drag-lock
-        natural-scroll
-        // accel-speed 0.2
-        // accel-profile "flat"
-        // scroll-method "two-finger"
-        // disabled-on-external-mouse
-    }
-
-    mouse {
-        // off
-        // natural-scroll
-        // accel-speed 0.2
-        // accel-profile "flat"
-        // scroll-method "no-scroll"
-    }
+    // Touchpad and mouse settings (tap, natural scroll, disable-while-typing,
+    // acceleration) are managed from DMS's settings UI, which writes them to
+    // dms/input.kdl; see the include at the bottom of this file. Setting them
+    // here as well would leave two sources of truth.
 
     trackpoint {
         // off
@@ -353,3 +333,15 @@ include "dms/binds.kdl"
 include "dms/outputs.kdl"
 include "dms/cursor.kdl"
 include "dms/windowrules.kdl"
+// DMS writes these two as well, but they used to be missing here, so the DMS
+// touchpad/mouse settings and the blurred overview wallpaper silently did
+// nothing. input.kdl comes after this file's own `input` section so that DMS's
+// values take precedence (includes merge, and override what precedes them).
+//
+// These are optional because they are newer than the includes above: copying
+// this config.kdl next to an older dms/ directory would otherwise break the
+// whole config, since niri rejects it outright on a missing non-optional
+// include and reads it before DMS starts and writes the files. With
+// optional=true, a missing file costs only a log warning until DMS writes it.
+include optional=true "dms/input.kdl"
+include optional=true "dms/wpblur.kdl"
