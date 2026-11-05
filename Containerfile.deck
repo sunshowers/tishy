@@ -10,5 +10,11 @@ COPY system_files /
 # system_files carries the build scripts in /tmp; clear them out so they don't
 # ship in the image.
 RUN --mount=type=cache,dst=/var/cache/libdnf5 \
-    /tmp/cleanup.sh && \
-    ostree container commit
+    /tmp/cleanup.sh
+
+# Validate the image the way Bazzite does (bootc's replacement for the
+# deprecated `ostree container commit`, which fails outright on Fedora 45
+# bases). A tmpfs /run and no network keep build-time state out of the check.
+RUN --mount=type=tmpfs,target=/run \
+    --network=none \
+    bootc container lint

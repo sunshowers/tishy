@@ -10,7 +10,7 @@ curl -fsSLo /etc/yum.repos.d/brave-browser.repo https://brave-browser-rpm-releas
 rpm --import https://brave-browser-rpm-release.s3.brave.com/brave-core.asc
 
 # Install
-rpm-ostree install brave-browser
+dnf5 -y install brave-browser
 
 # Clean up the yum repo (updates are baked into new images)
 rm /etc/yum.repos.d/brave-browser.repo -f

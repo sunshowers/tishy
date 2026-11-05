@@ -24,7 +24,7 @@ rpm --import https://dl.google.com/linux/linux_signing_key.pub
 touch /etc/default/google-chrome
 
 # Install packages
-rpm-ostree install google-chrome-stable
+dnf5 -y install google-chrome-stable
 
 # Remove the cron job
 rm /etc/cron.daily/google-chrome

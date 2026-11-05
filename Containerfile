@@ -34,8 +34,7 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
         zsh && \
     /tmp/install-1password.sh && \
     /tmp/install-chrome.sh && \
-    /tmp/cleanup.sh && \
-    ostree container commit
+    /tmp/cleanup.sh
 
 ## Install other packages
 ## XXX: probably should combine everything into one layer
@@ -63,5 +62,11 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
     /tmp/install-fonts.sh && \
     KERNEL_FLAVOR=bazzite /tmp/build-initramfs && \
     /tmp/cleanup.sh && \
-    install -d -m 0755 /nix && \
-    ostree container commit
+    install -d -m 0755 /nix
+
+# Validate the image the way Bazzite does (bootc's replacement for the
+# deprecated `ostree container commit`, which fails outright on Fedora 45
+# bases). A tmpfs /run and no network keep build-time state out of the check.
+RUN --mount=type=tmpfs,target=/run \
+    --network=none \
+    bootc container lint
