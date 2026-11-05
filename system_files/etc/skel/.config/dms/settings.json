@@ -436,5 +436,6 @@
     "calendar": {
       "weekends": true
     }
-  }
+  },
+  "launchPrefix": "systemd-run --user --scope choom -n 200 --"
 }
