@@ -91,3 +91,17 @@ systemctl --global enable dcal.service
 # existing config, under niri or KDE; see the script for details.
 chmod +x /usr/local/libexec/tishy-niri-seed
 systemctl --global enable tishy-niri-seed.service
+
+# uresourced (pulled in by plasma-workspace) has a user half whose only job is
+# "app boost": focus tracking via an xattr only GNOME Shell sets, plus a CPU/IO
+# weight bump for apps playing audio. It sends a SetUnitProperties call for
+# every PipeWire node event, without checking whether anything changed. On
+# 2026-11-05 a burst of these on dms.service kept the user manager busy enough
+# that no new scope could start, so nothing launched from DMS or niri.
+#
+# Masking it costs little. The system daemon then gives user@.service no
+# MemoryMin of its own, but user-N.slice keeps its protection, which
+# memory_recursiveprot (set on Fedora's cgroup2 mount) passes down. The
+# session.slice drop-in and the cgroupify drop-ins for browsers don't depend
+# on the user daemon.
+systemctl --global mask uresourced.service
