@@ -5,8 +5,9 @@
 //
 // Adapted from https://github.com/irunatbullets/spacium. Unlike spacium,
 // tishy does not global-enable the `dms` systemd user service (that would also
-// start DankMaterialShell under the KDE/Plasma session). Instead DMS is spawned
-// from this config via `spawn-at-startup`, which scopes it to the niri session.
+// start DankMaterialShell under the KDE/Plasma session). Instead the image's
+// /usr/lib/systemd/user/niri.service.d/60-dms.conf makes niri.service pull it
+// in, which scopes it to the niri session.
 config-notification {
     disable-failed
 }
@@ -182,10 +183,10 @@ environment {
     ELECTRON_OZONE_PLATFORM_HINT "auto"
 }
 
-// Start DankMaterialShell (the bar, launcher, notifications, lock screen, etc.)
-// when the niri session comes up. Spacium relies on a global dms.service for
-// this; we spawn it here instead so it never starts under KDE.
-spawn-at-startup "dms" "run"
+// DankMaterialShell (the bar, launcher, notifications, lock screen, etc.) is
+// not spawned here. It runs as dms.service instead, which gets Restart= on
+// crashes and an OOMPolicy=continue drop-in so that an OOM kill of an app
+// launched from DMS doesn't take DMS down with it.
 
 // Xwayland support for X11-only applications. niri detects the satellite and
 // sets DISPLAY automatically when the binary is running.
