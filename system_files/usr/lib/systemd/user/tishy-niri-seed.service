@@ -13,15 +13,20 @@ Description=Seed niri/DMS desktop config from /etc/skel for existing users
 # settings are seeded.
 #
 # There is no ConditionPathExists= here because several independent paths are
-# seeded; the script checks each one and does nothing for paths that already
-# exist, so running on every login costs only a few stat calls.
+# seeded; the script keeps a per-path marker and does nothing for paths it has
+# already handled, so running on every login costs only a few stat calls.
+#
+# No RemainAfterExit= either, deliberately: with it, the unit would stay
+# "active (exited)" for as long as the user manager lives (lingering, an SSH
+# session, a quick re-login), so the next graphical login would not run it
+# again, and Before=niri.service would order against nothing. Without it the
+# unit goes inactive after each run and every session start re-runs it.
 After=graphical-session-pre.target
 Before=niri.service
 
 [Service]
 Type=oneshot
 ExecStart=/usr/local/libexec/tishy-niri-seed
-RemainAfterExit=yes
 
 [Install]
 WantedBy=graphical-session.target

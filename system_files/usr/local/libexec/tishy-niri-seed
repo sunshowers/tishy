@@ -3,53 +3,110 @@
 # Seed a user's niri/DMS desktop config from /etc/skel on graphical login.
 #
 # /etc/skel only populates *new* home directories, so existing accounts never
-# receive the config baked into the image. This oneshot copies each seeded path
-# into place if, and only if, it doesn't exist yet. It is deliberately
-# non-destructive: anything already present is left untouched (spacium's
-# variant moves the existing config aside, which we do not want for a
-# multi-session box where the user may have hand-tuned things).
+# receive the config baked into the image. This copies each seeded path into
+# place at most once per account:
 #
-# Paths are seeded independently, so a user who already has, say, a Ghostty
-# config still gets the niri config, and vice versa.
+# * If the path (or an equivalent the app also reads) already exists, it is
+#   the user's own and is never touched.
+# * Otherwise the skel copy is installed.
+#
+# Either way, a marker under $XDG_STATE_HOME/tishy/seeded/ records that the
+# path has been dealt with, so a user who later deletes a seeded file (say, to
+# get an app's upstream defaults back) doesn't have it silently restored on the
+# next login. To opt back in, delete the marker.
+#
+# Paths are seeded independently: a failure on one is reported, the rest still
+# run, and the script exits non-zero at the end so the unit shows as failed.
 
 set -euo pipefail
 
 skel="/etc/skel"
 config_home="${XDG_CONFIG_HOME:-$HOME/.config}"
+marker_dir="${XDG_STATE_HOME:-$HOME/.local/state}/tishy/seeded"
 
-# seed SKEL_REL TARGET: copy $skel/SKEL_REL (file or directory) to TARGET
-# unless TARGET already exists.
-seed() {
-    local src="$skel/$1" target="$2" staging
-
-    if [[ ! -e "$src" ]]; then
-        echo "tishy-niri-seed: $src missing from the image; skipping" >&2
-        return 0
-    fi
-    # -L catches dangling symlinks too: a link the user put there on purpose
-    # is theirs, even if it currently points nowhere.
-    if [[ -e "$target" || -L "$target" ]]; then
-        return 0
-    fi
-
-    mkdir -p "$(dirname "$target")"
-    # Copy to a sibling staging path and rename into place, so that an
-    # interrupted copy never leaves a partial config at $target that later
-    # runs would mistake for the user's own and never repair.
-    staging="$(mktemp -d "$(dirname "$target")/.tishy-seed.XXXXXX")"
-    cp -r "$src" "$staging/payload"
-    mv -T "$staging/payload" "$target"
-    rmdir "$staging"
-    echo "tishy-niri-seed: seeded $target"
+log() {
+    echo "tishy-niri-seed: $*" >&2
 }
 
-seed .config/niri "$config_home/niri"
-seed .config/ghostty/config "$config_home/ghostty/config"
+# seed NAME SKEL_REL TARGET [EXISTING...]: install $skel/SKEL_REL (a file or
+# directory) at TARGET once, unless TARGET or any EXISTING path is already
+# present. NAME identifies the marker. Returns non-zero on failure.
+#
+# Called from `if`, where bash suspends `set -e`, so every step checks its own
+# result.
+seed() {
+    local name="$1" src="$skel/$2" target="$3"
+    shift 3
+    local marker="$marker_dir/$name" path staging
+
+    if [[ -e "$marker" ]]; then
+        return 0
+    fi
+
+    # -L catches dangling symlinks too: a link the user put there on purpose
+    # is theirs, even if it currently points nowhere.
+    for path in "$target" "$@"; do
+        if [[ -e "$path" || -L "$path" ]]; then
+            mark "$marker" || return 1
+            return 0
+        fi
+    done
+
+    if [[ ! -e "$src" ]]; then
+        log "$src missing from the image; not seeding $target"
+        return 1
+    fi
+
+    if ! mkdir -p "$(dirname "$target")"; then
+        log "couldn't create the parent directory of $target"
+        return 1
+    fi
+    # Copy to a sibling staging path and rename into place, so that an
+    # interrupted copy never leaves a partial config at $target that would
+    # later be mistaken for the user's own. The staging directory is removed
+    # whether or not the copy succeeds.
+    if ! staging="$(mktemp -d "$(dirname "$target")/.tishy-seed.XXXXXX")"; then
+        log "couldn't create a staging directory next to $target"
+        return 1
+    fi
+    if ! cp -r "$src" "$staging/payload" || ! mv -T "$staging/payload" "$target"; then
+        log "failed to install $target from $src"
+        rm -rf "$staging"
+        return 1
+    fi
+    rmdir "$staging" || log "couldn't remove empty staging directory $staging"
+
+    mark "$marker" || return 1
+    log "seeded $target"
+}
+
+mark() {
+    if ! mkdir -p "$marker_dir" || ! touch "$1"; then
+        log "couldn't write marker $1; this path will be re-checked next login"
+        return 1
+    fi
+}
+
+failed=0
+
+if ! seed niri .config/niri "$config_home/niri"; then
+    failed=1
+fi
+
+# Ghostty 1.2+ also reads config.ghostty (and writes its template there), so a
+# user with only that file already has a Ghostty config.
+if ! seed ghostty .config/ghostty/config "$config_home/ghostty/config" \
+    "$config_home/ghostty/config.ghostty"; then
+    failed=1
+fi
 
 # DMS 2.0 moved its config from ~/.config/DankMaterialShell to ~/.config/dms.
 # If the old location is present, the user has existing DMS settings that DMS
 # itself is responsible for carrying over; seeding the new location first
-# could shadow them, so leave DMS alone entirely in that case.
-if [[ ! -e "$config_home/DankMaterialShell" && ! -L "$config_home/DankMaterialShell" ]]; then
-    seed .config/dms/settings.json "$config_home/dms/settings.json"
+# could shadow them.
+if ! seed dms-settings .config/dms/settings.json "$config_home/dms/settings.json" \
+    "$config_home/DankMaterialShell"; then
+    failed=1
 fi
+
+exit "$failed"
