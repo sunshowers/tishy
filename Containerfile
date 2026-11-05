@@ -32,7 +32,6 @@ RUN --mount=type=cache,dst=/var/cache/rpm-ostree \
         strace \
         yakuake \
         zsh && \
-    cat /tmp/flatpak_install >> /usr/share/ublue-os/bazzite/flatpak/install && \
     /tmp/install-1password.sh && \
     /tmp/install-chrome.sh && \
     /tmp/cleanup.sh && \
