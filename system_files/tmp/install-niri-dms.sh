@@ -18,8 +18,8 @@ trap 'echo "::endgroup::"' EXIT
 # COPRs that host niri, DMS, quickshell, and the DMS helper tools.
 copr_repos=(
     irunatbullets/spacium-extras
-    avengemedia/dms
-    avengemedia/danklinux
+    duxlabs/dms
+    duxlabs/dux-repo
 )
 
 for repo in "${copr_repos[@]}"; do
@@ -32,17 +32,23 @@ done
 # GTK theming layers onto (it sets gtk-theme to adw-gtk3-dark); without it GTK3
 # apps fall back to light Adwaita. (Fedora ships this as adw-gtk3-theme; the bare
 # adw-gtk3 name spacium uses does not resolve on our base.)
+#
+# DMS moved from the avengemedia COPRs to duxlabs, and its helper tools were
+# renamed on the way (dankcalendar-git -> dux-calendar-git, danksearch ->
+# dux-search, dgop -> dux-gop). Use the new names: Fedora itself also ships
+# danksearch and dgop, so the old names could resolve to those instead.
+# breakpad is gone from the new repo and quickshell no longer depends on it;
+# cliphist now comes from Fedora.
 dnf5 -y install \
     acl \
     adw-gtk3-theme \
     bluetui \
-    breakpad \
     cava \
     cliphist \
-    dankcalendar-git \
-    danksearch \
-    dgop \
     dms \
+    dux-calendar-git \
+    dux-gop \
+    dux-search \
     material-symbols-fonts \
     matugen \
     niri \
