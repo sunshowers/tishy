@@ -6,9 +6,12 @@
 # Unlike spacium, tishy keeps its existing KDE/sddm session: this script only
 # *adds* niri as a selectable Wayland session and makes DMS available. It does
 # not swap the display manager (no greetd) or disable the stock session, so the
-# deck experience is left intact. Select "niri" from sddm to launch it; DMS is
-# started as dms.service, pulled in by niri.service (see
-# /usr/lib/systemd/user/niri.service.d/60-dms.conf), so it runs only under niri.
+# deck experience is left intact. Some defaults do change in every session,
+# though: Dux Files handles "show in folder" requests (see below).
+#
+# Select "niri" from sddm to launch it; DMS is started as dms.service, pulled in
+# by niri.service (see /usr/lib/systemd/user/niri.service.d/60-dms.conf), so it
+# runs only under niri.
 
 set -eoux pipefail
 
@@ -47,6 +50,7 @@ dnf5 -y install \
     cliphist \
     dms \
     dux-calendar-git \
+    dux-files \
     dux-gop \
     dux-search \
     material-symbols-fonts \
@@ -90,6 +94,30 @@ fi
 # runs under both DMS/niri and KDE; accounts are configured later from dcal's
 # own UI.
 systemctl --global enable dcal.service
+
+# Dux Files and Dolphin both ship D-Bus activation files claiming
+# org.freedesktop.FileManager1, which answers "show in folder" requests from
+# browsers and so on. With two claimants, which one the bus starts depends on
+# load order, so drop Dolphin's and let Dux Files handle it in every session.
+#
+# Check that the Dux Files paths referenced elsewhere in the image exist, and
+# use rm without -f: if either package renames one of these files, the build
+# fails here rather than silently leaving a dangling default or two claimants.
+dux_files_paths=(
+    # Activation file that takes over FileManager1 once Dolphin's is gone.
+    /usr/share/dbus-1/services/dev.duxlabs.files.FileManager1.service
+    # Named by inode/directory in /usr/share/applications/niri-mimeapps.list.
+    /usr/share/applications/dev.duxlabs.files.desktop
+    # Named by FileChooser= in /etc/xdg-desktop-portal/niri-portals.conf.
+    /usr/share/xdg-desktop-portal/portals/dfiles.portal
+)
+for path in "${dux_files_paths[@]}"; do
+    if [[ ! -f "$path" ]]; then
+        echo "dux-files no longer ships $path; update the image config that refers to it" >&2
+        exit 1
+    fi
+done
+rm /usr/share/dbus-1/services/org.kde.dolphin.FileManager1.service
 
 # /etc/skel only seeds *new* home directories, so enable a user service that
 # copies the niri, DMS, and Ghostty config into existing accounts at graphical
