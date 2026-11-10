@@ -1,15 +1,13 @@
 #!/usr/bin/bash
 
-# Replace Fedora's libinput with the patched build from the rain1094/libinput-tishy
-# COPR (packaging: ~/dev/libinput-rpm, branch tishy; patches: ~/dev/libinput,
-# branch tishy/1.32.0).
+# Replace Fedora's libinput with a snapshot of upstream main from the
+# rain1094/libinput-tishy COPR (packaging: ~/dev/libinput-rpm, branch tishy).
 #
-# Patches carried:
-# - Keep touchpad hysteresis disabled once a plugin disables it. Stock libinput
-#   only clears hysteresis.enabled, and on touchpads without axis fuzz (like the
-#   Framework 13 Pro's PixArt 093A:1343 haptic pad) wobble detection turns it
-#   back on at runtime, swallowing sub-0.25 mm cursor motion. The plugin that
-#   requests this lives in /etc/libinput/plugins/.
+# Upstream main has the AttrTouchpadHysteresis quirk, which keeps the
+# Framework 13 Pro's PixArt 093A:1343 haptic touchpad from switching
+# hysteresis on and swallowing sub-0.25 mm cursor motion. No release has it
+# yet. Once a Fedora libinput release includes it, the check at the end of
+# this script fails the build: drop this script and the COPR then.
 
 set -eoux pipefail
 
@@ -30,9 +28,9 @@ dnf5 -y upgrade --repo="$copr_repo_id" "${installed[@]}"
 # path; updated packages are baked into each new image build.
 dnf5 -y copr disable "$copr_repo"
 
-# Fail the build loudly if the patched build didn't land, e.g. because Fedora
-# shipped a newer libinput than the COPR's. Rebase the patches when that
-# happens rather than silently dropping them.
+# Fail the build loudly if the COPR build didn't land, e.g. because Fedora
+# shipped a newer libinput than the COPR's. If that release has the quirk,
+# drop this script; otherwise rebuild the COPR from a newer snapshot.
 for pkg in "${installed[@]}"; do
     release=$(rpm -q --qf '%{RELEASE}' "$pkg")
     if [[ "$release" != *tishy* ]]; then
